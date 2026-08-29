@@ -1181,6 +1181,20 @@ TRADING_PRESETS = {
 CUSTOM_PRESETS_FILE = os.path.expanduser("~/.algorand_bot_presets.json")
 
 
+def _restrict_to_owner(path: str) -> None:
+    """Restrict a file to owner-only read/write.
+
+    Presets can embed a partner API key (alpha_arcade_api_key), so this file
+    shouldn't be left group/world-readable under whatever umask the process
+    inherited. No-op (best effort) on platforms/filesystems that don't
+    support POSIX permission bits.
+    """
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
 def get_available_ollama_models() -> List[Dict[str, str]]:
     """Scan for available Ollama models."""
     models = []
@@ -1368,6 +1382,7 @@ def save_custom_preset(name: str, config: TradingConfig, description: str = ""):
     try:
         with open(CUSTOM_PRESETS_FILE, "w") as f:
             json.dump(presets, f, indent=2)
+        _restrict_to_owner(CUSTOM_PRESETS_FILE)
         log_success(f"Saved custom preset: {name}")
         return True
     except Exception as e:
@@ -1383,6 +1398,7 @@ def delete_custom_preset(name: str) -> bool:
         try:
             with open(CUSTOM_PRESETS_FILE, "w") as f:
                 json.dump(presets, f, indent=2)
+            _restrict_to_owner(CUSTOM_PRESETS_FILE)
             log_success(f"Deleted preset: {name}")
             return True
         except Exception as e:
